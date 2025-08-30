@@ -1,0 +1,25 @@
+{
+  "name": "Cat Classroom Game",
+  "short_name": "CatClass",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fffafc",
+  "theme_color": "#ff6b81",
+  "icons": [
+    {
+      "src": "/app_icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16 32x32 48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

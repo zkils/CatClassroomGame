@@ -62,7 +62,7 @@ const startRoll = () => {
 
     // store 저장 후 게임으로 이동
     school.setCharacter(pick)
-    setTimeout(() => router.push('/game'), 600)
+    setTimeout(() => router.push('/game-select'), 600)
     isRolling.value = false
   }, 3000)
 }
@@ -73,7 +73,7 @@ const pick = (type) => {
   result.value = type
   currentHighlight.value = type
   school.setCharacter(type)
-  router.push('/game')
+  router.push('/game-select')
 }
 
 onBeforeUnmount(() => {

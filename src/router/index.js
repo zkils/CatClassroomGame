@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import IntroPage from '@/views/IntroPage.vue'
 import NameInputPage from '@/views/NameInputPage.vue'
 import CharacterSelectPage from '@/views/CharacterSelectPage.vue'
-import GamePage from '@/views/GamePage.vue'
+import GameSelectPage from '@/views/GameSelectPage.vue'
 
 import { useSchoolStore } from '@/stores/school'
 import { pinia } from '@/main'
@@ -11,7 +11,7 @@ const routes = [
   { path: '/', name: 'IntroPage', component: IntroPage },
   { path: '/name', name: 'NameInputPage', component: NameInputPage },
   { path: '/character', name: 'CharacterSelectPage', component: CharacterSelectPage },
-  { path: '/game', name: 'GamePage', component: GamePage },
+  { path: '/game-select', name: 'GameSelectPage', component: GameSelectPage },
 ]
 
 const router = createRouter({

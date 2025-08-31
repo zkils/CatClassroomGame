@@ -57,10 +57,11 @@ const characterSrc = computed(() => {
 })
 
 const speechText = computed(() => {
+  const schoolName = schoolStore.schoolName
 if (schoolStore.characterType === 'cat') {
-return '교실을 골라보라냥!'
+return `${schoolName} 친구들 교실을 골라보라냥!`
 } else if (schoolStore.characterType === 'teacher') {
-return '어린이 여러분 교실을 선택해주세요'
+return `${schoolName} 어린이 여러분 교실을 선택해주세요`
 }
 return '원하는 게임을 선택하세요!'
 })

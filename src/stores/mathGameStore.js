@@ -4,66 +4,104 @@ import { useLocalStorage } from '@vueuse/core'
 const now = () => Date.now()
 const PASS_THRESHOLD = 6
 
-// ✅ 난수 유틸
-const randomInt = n => Math.floor(Math.random() * n)
+// 최근 출제 기억 (같은 문제 방지용)
+let lastQuestionKey = null
 
-// ✅ 수학 문제 생성기
 const makeMathQuestion = level => {
   let a, b, op, correct, question
+  let tries = 0
+
+  const isDuplicate = key => key === lastQuestionKey
 
   if (level === 1) {
-    // 한자리 덧셈 (합 ≤ 10)
+    // 🔹 한자리 덧셈
     do {
-      a = randomInt(10)
-      b = randomInt(10)
-    } while (a + b > 10)
+      a = Math.floor(Math.random() * 9) + 1  // 1~9
+      b = Math.floor(Math.random() * 9) + 1  // 1~9
+      correct = a + b
+      if (correct >= 10) {
+        // 결과가 두자리일 때는 0이 포함되지 않도록 a나 b에서 1 뺌
+        if (a > 1) a--
+        else if (b > 1) b--
+        correct = a + b
+      }
+      tries++
+      question = `${a}+${b}`
+      if (tries > 30) break
+    } while (isDuplicate(question) || correct === 0)
     op = '+'
-    correct = a + b
   }
 
   else if (level === 2) {
-    // 한자리 뺄셈 (음수 X)
+    // 🔹 한자리 뺄셈
     do {
-      a = randomInt(10)
-      b = randomInt(10)
-    } while (a - b < 0)
+      a = Math.floor(Math.random() * 9) + 1
+      b = Math.floor(Math.random() * 9) + 1
+      if (a < b) [a, b] = [b, a] // 음수 방지
+      correct = a - b
+      if (correct === 0) {
+        // 0이 되면 a나 b 조정
+        if (a < 9) a++
+        else if (b > 1) b--
+        correct = a - b
+      }
+      tries++
+      question = `${a}-${b}`
+      if (tries > 30) break
+    } while (isDuplicate(question) || correct === 0)
     op = '-'
-    correct = a - b
   }
 
   else if (level === 3) {
-    // 두자리 덧셈 (합 ≤ 100)
+    // 🔹 두자리 + 한자리
     do {
-      a = Math.floor(Math.random() * 90 + 10)
-      b = Math.floor(Math.random() * 90 + 10)
-    } while (a + b > 100)
+      a = Math.floor(Math.random() * 90) + 10  // 10~99
+      b = Math.floor(Math.random() * 9) + 1    // 1~9
+      correct = a + b
+      tries++
+      question = `${a}+${b}`
+      if (tries > 30) break
+    } while (isDuplicate(question) || correct === 0)
     op = '+'
-    correct = a + b
   }
 
   else if (level === 4) {
-    // 두자리 뺄셈 (음수 X)
+    // 🔹 두자리 - 한자리
     do {
-      a = Math.floor(Math.random() * 90 + 10)
-      b = Math.floor(Math.random() * 90 + 10)
-    } while (a - b < 0)
+      a = Math.floor(Math.random() * 90) + 10
+      b = Math.floor(Math.random() * 9) + 1
+      if (a <= b) a += 10 // 음수 방지
+      correct = a - b
+      tries++
+      question = `${a}-${b}`
+      if (tries > 30) break
+    } while (isDuplicate(question) || correct <= 0)
     op = '-'
-    correct = a - b
   }
 
   else if (level === 5) {
-    // 두자리 덧셈·뺄셈 혼합 (음수 X, 최대 999)
+    // 🔹 두자리 ± 두자리
     do {
-      a = Math.floor(Math.random() * 90 + 10)
-      b = Math.floor(Math.random() * 90 + 10)
+      a = Math.floor(Math.random() * 90) + 10
+      b = Math.floor(Math.random() * 90) + 10
       op = Math.random() < 0.5 ? '+' : '-'
       correct = op === '+' ? a + b : a - b
-    } while (correct < 0 || correct > 999)
+      tries++
+      question = `${a}${op}${b}`
+      if (tries > 30) break
+    } while (
+      isDuplicate(question) ||
+      correct <= 0 ||
+      correct > 999
+    )
   }
 
   question = `${a} ${op} ${b} = ?`
+  lastQuestionKey = `${a}${op}${b}`
   return { question, correct }
 }
+
+
 
 export const useMathGameStore = defineStore('math-game', {
   state: () => ({

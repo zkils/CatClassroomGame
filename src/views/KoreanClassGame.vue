@@ -3,25 +3,42 @@
     <!-- 상단 고정바: 레벨/진행/점수+시간 -->
     <header class="topbar">
       <button class="back-btn" @click="goBack"></button>
-      <div class="level">LEVEL {{ game.level }}</div>
-      <div class="progress">{{ game.progressText }}</div>
-      <div class="meta">
-        <span class="score">점수 {{ game.score }}</span>
-        <span class="time">시간 {{ formattedElapsed }}</span>
-      </div>
     </header>
 
-    <!-- 캐릭터 + 말풍선 -->
-    <section class="character-row">
-      <div class="character">
-        <img
-          :src="characterImg"
-          alt="character"
-        />
-      </div>
-      <div class="speech-bubble" :class="bubbleClass">
-        <span>{{ bubbleText }}</span>
-      </div>
+        <section class="character-row">
+    <!-- ✅ 새로 추가된 상태 패널 -->
+    <div class="status-panel">
+        <div class="status-top">
+        <span class="level">LEVEL {{ game.level }}</span>
+        <span class="score">점수 {{ game.score }}</span>
+        <span class="time">시간 {{ formattedElapsed }}</span>
+        </div>
+
+        <!-- ✅ 진행도 바 -->
+        <div class="progress-wrap">
+        <div
+            class="progress-bar"
+            :key="progressKey"
+            :style="{ width: progressPercent + '%' }"
+        ></div>
+        </div>
+
+        <div class="progress-text">
+        {{ game.progressText }}
+        </div>
+    </div>
+
+    <div class="character-bubble">
+        <!-- 캐릭터 -->
+        <div class="character">
+            <img :src="characterImg" alt="character" />
+        </div>
+
+        <!-- 말풍선 -->
+        <div class="speech-bubble" :class="bubbleClass">
+            <span>{{ bubbleText }}</span>
+        </div>
+    </div>
     </section>
 
     <!-- 메인 스테이지 -->
@@ -120,6 +137,7 @@ const school = useSchoolStore()
 const answer = ref('')
 const inputRef = ref(null)
 const isComposing = ref(false)
+const progressKey = ref(0)
 
 const maxLen = computed(() => game.level === 3 ? 12 : 1)
 const focusInput = () => nextTick(() => inputRef.value?.focus())
@@ -147,6 +165,14 @@ const goBack = () => {
   game.resetGame()     // ✅ 게임 완전 초기화
   router.back()        // ✅ 이전 페이지로 이동
 }
+
+watch(
+  () => game.level,
+  () => {
+    // 레벨이 바뀌면 progress bar 재렌더링 트리거
+    progressKey.value++
+  }
+)
 
 // 카운트다운 끝나면 자동 포커스
 watch(() => game.countdown, v => {
@@ -279,21 +305,26 @@ onMounted(() => {
 
 /* 캐릭터 + 말풍선 */
 .character-row {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 16px;
+  display: flex;
+  flex-direction: column; /* ✅ 세로 정렬 */
   align-items: center;
+  gap: 12px;
   margin-bottom: 12px;
+  
 }
-.character img {
+ .character-row .character-bubble{
+      display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 12px;
+        width: 100%;
+  }
+.character-row .character-bubble img {
   width: 200px;
   height: 200px;
   object-fit: contain;
-  image-rendering: -webkit-optimize-contrast;
-  border-radius: 16px;;
-    /* background: rgb(249 248 248 / 30%);
-  backdrop-filter: blur(2px);
-  border: solid 0.5px rgba(200, 200, 200, 0.3); */
+  border-radius: 16px;
 }
 
 /* 말풍선 */
@@ -490,5 +521,68 @@ onMounted(() => {
   font-weight: 700;
   color: #fff;
   text-shadow: 0 4px 10px rgba(0,0,0,.4);
+}
+.status-panel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80%;
+  gap: 16px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  font-weight: 700;
+  font-size: 18px;
+  color: #333;
+}
+
+.status-panel .status-top {
+    display:flex;
+    gap: 16px;
+}
+
+.status-panel .level {
+  color: #7c4dff;
+  font-weight: 900;
+}
+
+.status-panel .progress {
+  color: #555;
+}
+
+.status-panel .meta {
+  display: flex;
+  gap: 12px;
+}
+
+.status-panel .score {
+  color: #ff9800;
+  font-weight: 900;
+}
+
+.status-panel .time {
+  color: #0078d7;
+  font-weight: 900;
+}
+
+/* ✅ 진행도 바 */
+.progress-wrap {
+  width: 45%;
+  height: 12px;
+  background: rgba(200, 200, 200, 0.25);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd24d, #7c4dff);
+  border-radius: 8px;
+  transition: width 0.3s ease;
+}
+.progress-text {
+  font-size: 14px;
+  color: #555;
 }
 </style>

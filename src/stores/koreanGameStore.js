@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useLocalStorage } from '@vueuse/core'
 
 const JA = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ']
 const MO = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ']
@@ -60,6 +61,7 @@ export const useKoreanGameStore = defineStore('korean-game', {
     currentQuestion: '',
     lastResult: null,   // 'correct' | 'wrong' | null
     isFinished: false,
+    questionStartedAt: null,  
 
     // 시작/카운트다운/타이머
     isStarted: false,
@@ -68,9 +70,10 @@ export const useKoreanGameStore = defineStore('korean-game', {
     startedAt: null,     // timestamp(ms)
     elapsedMs: 0,        // 경과(ms)
     _tickId: null,       // setInterval id
+    nextLevelCountdown: 0,
 
     // 기록
-    records: []          // { dateISO, score, durationMs }
+    records: useLocalStorage('korean-game-records', []),          // { dateISO, score, durationMs }
   }),
   getters: {
     progressText: s => `${s.questionIndex + 1} / 10`,
@@ -112,6 +115,10 @@ export const useKoreanGameStore = defineStore('korean-game', {
       this.elapsedMs = 0
       this._stopTimer()
     },
+    nextQuestion() {
+      this.currentQuestion = makeQuestion(this.level)
+      this.questionStartedAt = Date.now() // ✅ 문제 시작 시각 기록
+    },
 
     // 외부에서 호출: 홈에서 "시작" 눌렀을 때
     startWithCountdown() {
@@ -142,33 +149,78 @@ export const useKoreanGameStore = defineStore('korean-game', {
       this.currentQuestion = makeQuestion(this.level)
     },
 
-    nextQuestion() {
-      this.currentQuestion = makeQuestion(this.level)
+    resetGame() {
+      this._stopTimer()
+      this.isStarted = false
+      this.isRunning = false
+      this.isFinished = false
+      this.countdown = 0
+      this.nextLevelCountdown = 0 
+      this.level = 1
+      this.score = 0
+      this.correctCount = 0
+      this.questionIndex = 0
+      this.currentQuestion = ''
+      this.lastResult = null
+      this.elapsedMs = 0
     },
 
-    submit(answerRaw) {
+     submit(answerRaw) {
       if (!this.isStarted || this.countdown > 0 || this.isFinished) return
+
       const ans = (answerRaw ?? '').trim()
       const target = this.currentQuestion.trim()
-
       const correct = ans === target
       this.lastResult = correct ? 'correct' : 'wrong'
+
       if (correct) {
         this.correctCount++
-        this.score += this.level === 1 ? 10 : this.level === 2 ? 20 : 30
+
+        // ✅ 1) 기본 점수
+        const base = this.level === 1 ? 10 : this.level === 2 ? 20 : 30
+
+        // ✅ 2) 문제 푼 시간 계산
+        const now = Date.now()
+        const timeTakenSec = (now - this.questionStartedAt) / 1000
+
+        // ✅ 3) 30초 단위 가중치 계산
+        const speedRatio = Math.max(0, (30 - timeTakenSec) / 30) // 0~1
+        const multiplier = 1 + speedRatio * 0.5 // 최대 1.5배
+
+        // ✅ 4) 최종 점수 반영
+        const earned = Math.round(base * multiplier)
+        this.score += earned
+
+         if (speedRatio > 0.8)      this.lastResult = 'perfect' // 아주 빠름
+         else if (speedRatio > 0.5) this.lastResult = 'fast'    // 빠름
+         else                       this.lastResult = 'correct' // 보통
+        // ✅ 디버깅용 로그 (원하면 삭제)
+        console.log(`기본 ${base}점, 소요 ${timeTakenSec.toFixed(1)}초 → ${earned}점 획득`)
       }
 
+      // 다음 문제 로직 그대로...
       if (this.questionIndex < 9) {
         this.questionIndex++
         this.nextQuestion()
       } else {
         const passed = this.correctCount >= 8
         if (this.level < 3 && passed) {
-          this.startLevel(this.level + 1)
+          this.nextLevelCountdown = 5
+          const tick = () => {
+            if (this.nextLevelCountdown > 0) {
+              setTimeout(() => {
+                this.nextLevelCountdown--
+                tick()
+              }, 1000)
+            } else {
+              this.startLevel(this.level + 1)
+              this._startTimer() 
+            }
+          }
+          tick()
         } else {
           this.isFinished = true
           this._stopTimer()
-          // 기록 저장
           this.records.unshift({
             dateISO: new Date().toISOString(),
             score: this.score,
@@ -177,6 +229,7 @@ export const useKoreanGameStore = defineStore('korean-game', {
         }
       }
     },
+
 
     // 다시하기
     restart() {

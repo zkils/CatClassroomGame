@@ -1,7 +1,8 @@
-<template>
+﻿<template>
   <div class="game-wrap">
     <!-- 상단 고정바: 레벨/진행/점수+시간 -->
     <header class="topbar">
+      <button class="back-btn" @click="goBack"></button>
       <div class="level">LEVEL {{ game.level }}</div>
       <div class="progress">{{ game.progressText }}</div>
       <div class="meta">
@@ -30,18 +31,34 @@
         <button class="start-btn" @click="onStart">시작</button>
       </div>
 
-      <!-- 카운트다운 오버레이 -->
-      <div v-if="game.isStarted && game.countdown > 0" class="countdown">
-        <div class="num">{{ game.countdown }}</div>
+     
+    <template v-if="game.nextLevelCountdown > 0 || game.countdown > 0">
+ <!-- 카운트다운 오버레이 -->
+      <div v-if="game.nextLevelCountdown > 0" class="countdown">
+        <div class="num">{{ game.nextLevelCountdown }}</div>
+        <p class="next-level-text">다음 레벨로 넘어갑니다...</p>
       </div>
+       <!-- 카운트다운 오버레이 -->
+     <div v-if="game.countdown > 0" class="countdown">
+      <div class="num">{{ game.countdown }}</div>
+    </div>
+    </template>
 
       <!-- 문제/입력/결과 -->
-      <template v-if="game.isStarted && game.countdown === 0">
-        <div class="question" :class="shakeClass">
+      <template v-else-if="game.isStarted && game.countdown === 0">
+        <div 
+          v-if="!game.isFinished" 
+          class="question" 
+          :class="shakeClass"
+        >
           {{ game.currentQuestion }}
         </div>
 
-        <form class="answer" @submit.prevent="onSubmit">
+        <form
+          v-if="!game.isFinished"
+          class="answer"
+          @submit.prevent="onSubmit"
+        >
           <input
             ref="inputRef"
             v-model="answer"
@@ -94,7 +111,9 @@
 import { onMounted, ref, computed, nextTick, watch } from 'vue'
 import { useKoreanGameStore } from '@/stores/koreanGameStore'
 import { useSchoolStore } from '@/stores/school' // characterType: 'cat' | 'teacher'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const game = useKoreanGameStore()
 const school = useSchoolStore()
 
@@ -123,6 +142,25 @@ const onRestart = () => {
   answer.value = ''
   focusInput()
 }
+
+const goBack = () => {
+  game.resetGame()     // ✅ 게임 완전 초기화
+  router.back()        // ✅ 이전 페이지로 이동
+}
+
+// 카운트다운 끝나면 자동 포커스
+watch(() => game.countdown, v => {
+  if (v === 0 && game.isStarted && !game.isFinished) focusInput()
+})
+
+// ✅ 레벨 전환 카운트다운도 끝나면 자동 포커스
+watch(() => game.nextLevelCountdown, v => {
+  if (v === 0 && game.isStarted && !game.isFinished) {
+    // 다음 레벨이 막 시작된 시점이므로
+    // DOM이 갱신된 다음에 포커스하도록 nextTick 사용
+    nextTick(() => focusInput())
+  }
+})
 
 // 흔들림
 const shakeClass = computed(() => game.lastResult === 'wrong' ? 'shake' : '')
@@ -169,11 +207,23 @@ const bubbleText = computed(() => {
       ? '수고했어요! 다시 도전해볼까요?'
       : '멋졌어! 또 해보자냥!'
   }
+   // ✅ 새로 추가: 속도 피드백
+  if (game.lastResult === 'perfect') {
+    return school.characterType === 'teacher' ? '정말 빠르네요!' : '엄청 빠르다냥!'
+  }
+  if (game.lastResult === 'fast') {
+    return school.characterType === 'teacher' ? '아주 좋아요, 빠릅니다!' : '좋은 속도라냥!'
+  }
   if (game.lastResult === 'correct') {
     return school.characterType === 'teacher' ? '정답!' : '정답!'
   }
   if (game.lastResult === 'wrong') {
     return school.characterType === 'teacher' ? '아쉽네요!' : '아깝다냥!'
+  }
+  if (game.nextLevelCountdown > 0) {
+    return school.characterType === 'teacher'
+      ? `다음 레벨 준비! ${game.nextLevelCountdown}초 후 시작!`
+      : `${game.nextLevelCountdown}초 후 다음 레벨이라냥!`
   }
   // 평상시
   return school.characterType === 'teacher'
@@ -182,10 +232,13 @@ const bubbleText = computed(() => {
 })
 
 // 말풍선 스타일용 클래스
-const bubbleClass = computed(() => ({
-  correct: game.lastResult === 'correct',
-  wrong: game.lastResult === 'wrong'
-}))
+const bubbleClass = computed(() => {
+  const ok = ['correct','perfect','fast'].includes(game.lastResult)
+  return {
+    correct: ok,
+    wrong: game.lastResult === 'wrong'
+  }
+})
 
 // 카운트다운 끝나면 자동 포커스
 watch(() => game.countdown, v => {
@@ -203,6 +256,11 @@ onMounted(() => {
   margin: 0 auto;
   padding: 16px 20px 48px;
   font-family: system-ui, -apple-system, 'Noto Sans KR', Segoe UI, Roboto, sans-serif;
+  background-image: url('@/assets/bg_game_korean.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 16px;
 }
 
 /* 상단 바 */
@@ -224,7 +282,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 16px;
-  align-items: end;
+  align-items: center;
   margin-bottom: 12px;
 }
 .character img {
@@ -232,6 +290,10 @@ onMounted(() => {
   height: 200px;
   object-fit: contain;
   image-rendering: -webkit-optimize-contrast;
+  border-radius: 16px;;
+    /* background: rgb(249 248 248 / 30%);
+  backdrop-filter: blur(2px);
+  border: solid 0.5px rgba(200, 200, 200, 0.3); */
 }
 
 /* 말풍선 */
@@ -272,12 +334,15 @@ onMounted(() => {
 /* 시작 패널 */
 .start-panel { margin-top: 8px }
 .start-btn {
+  width: 120px;
+  height: 120px;
   padding: 12px 20px;
   border: none;
   border-radius: 14px;
   background: linear-gradient(135deg, #ff8ad4, #7c4dff);
   color: white;
   font-weight: 800;
+  font-size: 22px;
   cursor: pointer;
   box-shadow: 0 8px 22px rgba(124,77,255,.25);
 }
@@ -308,7 +373,7 @@ onMounted(() => {
 /* 문제/입력 */
 .question {
   font-size: clamp(64px, 12vw, 120px);
-  line-height: 1;
+  line-height: 1.5;
   font-weight: 900;
   letter-spacing: 2px;
   padding: 16px 24px;
@@ -341,7 +406,20 @@ onMounted(() => {
 }
 
 /* 결과 */
-.finish { text-align: center }
+.finish { 
+  text-align: center;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center;
+  width: 300px;
+  height: fit-content;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgb(249 248 248 / 30%);
+  backdrop-filter: blur(2px);
+  border: solid 0.5px rgba(200, 200, 200, 0.3);
+}
 .finish button {
   margin-top: 8px;
   padding: 10px 16px;
@@ -365,7 +443,12 @@ onMounted(() => {
 .shake { animation: k-shake .25s linear 1 }
 
 /* 기록 */
-.records { margin-top: 24px }
+.records { margin-top: 24px;
+      background: rgb(249 248 248 / 30%);
+  backdrop-filter: blur(2px);
+  border: solid 0.5px rgba(200, 200, 200, 0.3);
+ }
+ .records h3 { text-align: center;}
 .records table { width: 100%; border-collapse: collapse; }
 .records th, .records td {
   border-bottom: 1px solid #eee;
@@ -373,4 +456,39 @@ onMounted(() => {
   padding: 8px 6px;
 }
 .records th { color: #666; font-weight: 700 }
+.back-btn {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+  color: #555;
+  padding: 4px 8px;
+  font-weight: 700;
+  background-image: url('@/assets/img_back.png');
+  width: 120px;
+  height: 80px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 16px;
+}
+.back-btn:hover, .back-btn:active { transform: scale(0.9); }
+.next-level-wait {
+  font-size: 20px;
+  font-weight: 700;
+  color: #7c4dff;
+  animation: blink 1s infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1 }
+  50% { opacity: .4 }
+}
+.next-level-text {
+  position: absolute;
+  bottom: 10%;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 4px 10px rgba(0,0,0,.4);
+}
 </style>

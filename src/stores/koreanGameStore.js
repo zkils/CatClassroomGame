@@ -214,6 +214,7 @@ export const useKoreanGameStore = defineStore('korean-game', {
               }, 1000)
             } else {
               this.startLevel(this.level + 1)
+              this._stopTimer()
               this._startTimer() 
             }
           }

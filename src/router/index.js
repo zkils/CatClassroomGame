@@ -4,6 +4,7 @@ import NameInputPage from '@/views/NameInputPage.vue'
 import CharacterSelectPage from '@/views/CharacterSelectPage.vue'
 import GameSelectPage from '@/views/GameSelectPage.vue'
 import KoreanClassGame from '@/views/KoreanClassGame.vue'
+import MathClassGame from '@/views/MathClassGame.vue'
 
 import { useSchoolStore } from '@/stores/school'
 import { pinia } from '@/main'
@@ -14,6 +15,7 @@ const routes = [
   { path: '/character', name: 'CharacterSelectPage', component: CharacterSelectPage },
   { path: '/game-select', name: 'GameSelectPage', component: GameSelectPage },
   { path: '/korean-class', name: 'KoreanClassGame', component: KoreanClassGame },
+  { path: '/math-class', name: 'MathClassGame', component: MathClassGame },
 ]
 
 const router = createRouter({
